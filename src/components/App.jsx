@@ -1,78 +1,138 @@
-import { Component } from 'react';
-import { nanoid } from 'nanoid';
-import { data } from '../data/data';
-import UserList from './UsersList/UsersList';
+// import { Component } from 'react';
+import { useState, useEffect } from 'react';
+import { fetchMovies } from 'services/moviesApi';
 import Button from './Button/Button';
-import Form from './Form/Form';
-import Modal from './Modal/Modal';
+import MoviesList from './MoviesList/MoviesList';
 
-class App extends Component {
-  state = {
-    users: data,
-    isFormShown: false,
-    currentAvatar: null,
+const App = () => {
+  const [isListShown, setIsListShown] = useState(false);
+  const [movies, setMovies] = useState([]);
+  const [page, setPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (isListShown) {
+      getMovies();
+    }
+
+    if (!isListShown) {
+      setMovies([]);
+      setPage(1);
+    }
+  }, [isListShown, page]);
+
+  const handleClick = () => {
+    setIsListShown(prevState => !prevState);
   };
 
-  deleteUser = id => {
-    this.setState(prevState => ({
-      users: prevState.users.filter(user => user.id !== id),
-    }));
+  const getMovies = () => {
+    setIsLoading(true);
+
+    fetchMovies(page)
+      .then(response => {
+        setMovies(prevMovies => [...prevMovies, ...response.data.results]);
+      })
+      .catch(error => console.log(error))
+      .finally(() => setIsLoading(false));
   };
 
-  addUser = user => {
-    const newUser = {
-      ...user,
-      hasJob: false,
-      id: nanoid(),
-    };
-    this.setState(prevState => ({ users: [...prevState.users, newUser] }));
+  const loadMore = () => {
+    setPage(prevPage => prevPage + 1);
   };
 
-  openForm = () => {
-    this.setState({ isFormShown: true });
+  const deleteMovie = id => {
+    setMovies(prevMovies => prevMovies.filter(movie => movie.id !== id));
   };
 
-  closeForm = () => {
-    this.setState({ isFormShown: false });
-  };
-
-  openModal = img => {
-    this.setState({ currentAvatar: img });
-  };
-
-  closeModal = () => {
-    this.setState({ currentAvatar: null });
-  };
-
-  changeJobStatus = id => {
-    this.setState(prevState => ({
-      users: prevState.users.map(user =>
-        user.id === id ? { ...user, hasJob: !user.hasJob } : user
-      ),
-    }));
-  };
-
-  render() {
-    const { users, isFormShown, currentAvatar } = this.state;
-    return (
-      <>
-        <UserList
-          users={users}
-          deleteUser={this.deleteUser}
-          openModal={this.openModal}
-          changeJobStatus={this.changeJobStatus}
-        />
-        {isFormShown ? (
-          <Form addUser={this.addUser} closeForm={this.closeForm} />
-        ) : (
-          <Button text="Add user" clickHandler={this.openForm} />
-        )}
-        {currentAvatar && (
-          <Modal img={currentAvatar} closeModal={this.closeModal} />
-        )}
-      </>
-    );
-  }
-}
+  return (
+    <>
+      <Button
+        textContent={isListShown ? 'Hide movies list' : 'Show movies list'}
+        handleClick={handleClick}
+      />
+      {movies.length > 0 && isListShown && (
+        <>
+          <MoviesList movies={movies} deleteMovie={deleteMovie} />
+          <Button textContent="Load more" handleClick={loadMore} />
+        </>
+      )}
+    </>
+  );
+};
 
 export default App;
+
+// class App extends Component {
+//   state = {
+//     isListShown: false,
+//     movies: [],
+//     page: 1,
+//     isLoading: false,
+//   };
+
+//   componentDidUpdate(prevProps, prevState) {
+//     const prevIsListShown = prevState.isListShown;
+//     const currIsListShown = this.state.isListShown;
+//     const prevPage = prevState.page;
+//     const currPage = this.state.page;
+
+//     if (
+//       (prevIsListShown !== currIsListShown || prevPage !== currPage) &&
+//       currIsListShown
+//     ) {
+//       this.getMovies();
+//     }
+
+//     if (prevIsListShown !== currIsListShown && !currIsListShown) {
+//       this.setState({ movies: [], page: 1 });
+//     }
+//   }
+
+//   handleClick = () => {
+//     this.setState(prevState => ({
+//       isListShown: !prevState.isListShown,
+//     }));
+//   };
+
+//   getMovies = () => {
+//     const { page } = this.state;
+//     this.setState({ isLoading: true });
+
+//     fetchMovies(page)
+//       .then(response => {
+//         this.setState(prevState => ({
+//           movies: [...prevState.movies, ...response.data.results],
+//         }));
+//       })
+//       .catch(error => console.log(error))
+//       .finally(() => this.setState({ isLoading: false }));
+//   };
+
+//   loadMore = () => {
+//     this.setState(prevState => ({ page: prevState.page + 1 }));
+//   };
+
+//   deleteMovie = id => {
+//     this.setState(prevState => ({
+//       movies: prevState.movies.filter(movie => movie.id !== id),
+//     }));
+//   };
+
+//   render() {
+//     const { isListShown, movies } = this.state;
+//     return (
+//       <>
+//         <Button
+//           textContent={isListShown ? 'Hide movies list' : 'Show movies list'}
+//           handleClick={this.handleClick}
+//         />
+//         {movies.length > 0 && isListShown && (
+//           <>
+//             <MoviesList movies={movies} deleteMovie={this.deleteMovie} />
+//             <Button textContent="Load more" handleClick={this.loadMore} />
+//           </>
+//         )}
+//       </>
+//     );
+//   }
+// }
