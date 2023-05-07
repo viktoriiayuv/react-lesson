@@ -1,20 +1,62 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, isAnyOf } from '@reduxjs/toolkit';
+import { getUsers } from './operations';
+import { getUser } from './operations';
+import { deleteUser } from './operations';
+
+const handlePending = state => {
+  state.isLoading = true;
+};
+
+const handleFulfilled = state => {
+  state.users.isLoading = false;
+  state.users.error = null;
+};
+
+const handleFetchAllFulfilled = (state, { payload }) => {
+  state.users.items = payload;
+};
+
+const handleFetchSingleFulfilled = (state, { payload }) => {
+  state.users.currentUser = payload;
+};
+
+const handleDeleteUserFulfilled = (state, { payload }) => {
+  state.users.items = state.users.items.filter(user => user.id !== payload);
+};
+
+const handleRejected = (state, { payload }) => {
+  state.users.isLoading = false;
+  state.users.error = payload;
+};
 
 const usersSlice = createSlice({
   name: 'users',
   initialState: {
-    users: [],
+    users: {
+      items: [],
+      isLoading: false,
+      error: null,
+      currentUser: null,
+    },
   },
-  reducers: {
-    addUser(state, action) {
-      state.users.push(action.payload);
-    },
-    deleteUser(state, action) {
-      const newUsers = state.users.filter(user => user.id !== action.payload);
-      state.users = newUsers;
-    },
+  extraReducers: builder => {
+    builder
+      .addCase(getUsers.fulfilled, handleFetchAllFulfilled)
+      .addCase(getUser.fulfilled, handleFetchSingleFulfilled)
+      .addCase(deleteUser.fulfilled, handleDeleteUserFulfilled)
+      .addMatcher(
+        isAnyOf(getUsers.pending, getUser.pending, deleteUser.pending),
+        handlePending
+      )
+      .addMatcher(
+        isAnyOf(getUsers.rejected, getUser.rejected, deleteUser.rejected),
+        handleRejected
+      )
+      .addMatcher(
+        isAnyOf(getUsers.fulfilled, getUser.fulfilled, deleteUser.fulfilled),
+        handleFulfilled
+      );
   },
 });
 
-export const { addUser, deleteUser } = usersSlice.actions;
 export const usersReducer = usersSlice.reducer;
